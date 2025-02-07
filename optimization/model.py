@@ -23,8 +23,6 @@ class AssemblyLineModel:
 
         products = ["Test"]
 
-        print(precedence_relations)
-
         self.model = self.build_model(cycle_time, tasks, station_types, products, task_time_dict, precedence_relations,
                     incompatible_tasks, same_station_pairs, station_type_compatibility, station_costs, 
                     process_specific_costs, task_relevance)
