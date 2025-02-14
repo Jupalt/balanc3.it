@@ -1,55 +1,41 @@
-"""
-This module contains the definitions of the constraints applied to the optimization model.
-Each function in this module represents a specific constraint. 
-"""
-
-# Task Assignment: Each task is assigned to exactly one station
+# Every Task is assigned to exactly one station
 def task_assignment_rule(model, i):
-    return sum(model.x[i, j] for j in model.STATIONS) == 1
+    return sum(model.x[i, j, k, p] for j in model.STATIONS for k in model.TYPES for p in model.PARALLELS) == 1
 
-# Open Stations: Tasks can only be assigned to open stations
-def open_station_rule(model, i, j):
-    return model.x[i, j] <= model.z[j]
+# Every Station has exactly one station type
+def station_type_rule(model, j, k):
+    return sum(model.x[i, j, k, p] for i in model.TASKS for p in model.PARALLELS) <= model.M * model.z[j, k]
 
-# The sum of task times at a station time must be less than the cycle time 
-def cycle_time_constraint(model, j):
-    return sum(model.t[i, k] * model.x[i, j] * model.r[i] * model.y[j, k]
-                for i in model.TASKS
-                for k in model.TYPES) <= model.c * model.z[j] * (1+model.p[j])
+# Every Station has exactly one degree of parallelity
+def station_type_helper_rule(model, j):
+    return sum(model.z[j, k] for k in model.TYPES) == 1
+
+# A Task is only assigned to stations with acceptable station types
+def compatibility_rule(model, i, j, k, p):
+    return model.x[i, j, k, p] <= model.F[i, k]
+
+# The task times don't exceed the cycle time T
+def time_rule(model, j):
+    return sum((model.t[i, k] * model.x[i, j, k, p])/p for i in model.TASKS for k in model.TYPES for p in model.PARALLELS) <= model.T
+
+# Different task assigned to one station have the same degree of parallelity
+def consistent_parallelity_rule(model, j, p):
+    return sum(model.x[i, j, k, p] for i in model.TASKS for k in model.TYPES) <= model.M * model.y[j, p]
+
+# Every Station has exactly one degree of parallelity
+def parallel_helper_rule(model, j):
+    return sum(model.y[j, p] for p in model.PARALLELS) == 1
 
 # Precedence relations
-def precedence_rule(model, g, h):
-    return sum(j * model.x[g, j] for j in model.STATIONS) <= sum(j * model.x[h, j] for j in model.STATIONS)
-
-# Station Type Assignment: Each station has exactly one type
-def station_type_rule(model, j):
-    return sum(model.y[j, k] for k in model.TYPES) == model.z[j]
-
-# Station Type Compatibility. A task can only be assigned to a station of a compatible type
-def station_compatibility_rule(model, i, j):
-    return model.x[i, j] <= sum(model.F[i, k] * model.y[j, k] for k in model.TYPES)
-
-# Incompatible Tasks: Task d and f cant be assigned to the same station because they are incompatible
-def incompatible_tasks_rule(model, d, f, j):
-    return model.x[d, j] + model.x[f, j] <= 1
+def precedence_relations_rule(model, g, h):
+    return sum(j * model.x[g, j, k, p] for j in model.STATIONS for k in model.TYPES for p in model.PARALLELS) <= sum(j * model.x[h, j, k, p] for j in model.STATIONS for k in model.TYPES for p in model.PARALLELS)
 
 # Same Station Tasks: Task m and n must be assigned to the same station
-def same_station_tasks_rule(model, m, n, j):
-    return model.x[m, j] == model.x[n, j]
+def same_station_pairs_rule(model, m, n, j):
+    return sum(model.x[m, j, k, p] for k in model.TYPES for p in model.PARALLELS) == sum(model.x[n, j, k, p] for k in model.TYPES for p in model.PARALLELS)
 
-# Ensures that the precedence relations are satisfied within a station
-def precedence_within_station_rule(model, g, h):
-    return sum(model.x[g, j] * model.task_order[g, j] for j in model.STATIONS) \
-        <= sum(model.x[h, j] * model.task_order[h, j] for j in model.STATIONS) - 1
+def open_station(model, j):
+    return sum(model.x[i, j, k, p] for i in model.TASKS for k in model.TYPES for p in model.PARALLELS) <= model.v[j] * model.M
 
-# The order of task i at station j is meaningful only if task i is assigned to station j
-def task_order_assignment_rule(model, i, j):
-    return model.task_order[i, j] <= 100 * model.x[i, j]
-
-# The total number of parallel stations must be smaller than total_parallel_stations
-def parallel_station_limit_rule(model):
-    return sum(model.p[j] for j in model.STATIONS) <= 2
-
-# Ensures linearity of the objective function
-def linearity_constraint(model, j, k):
-    return model.l[j, k] == (model.y[j, k] * (1+model.p[j]))
+def helper_open_station(model, j, k, p):
+    return sum(model.x[i, j, k, p] for i in model.TASKS) <= model.w[j, k, p] * model.M

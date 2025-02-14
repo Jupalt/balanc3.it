@@ -1,64 +1,16 @@
 import asyncio
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, BackgroundTasks
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import Dict, List, Tuple
-from optimization.model import AssemblyLineModel
-from optimization import solver
-from output.process_results import print_results
+from optimization_old.model import AssemblyLineModel
+from optimization_old import solver
+from output.process_results import write_results
 
 app = FastAPI()
 
 # Global Dict to save the input data
 optimization_data: Dict[str, any] = {}
-
-optimization_status = {"status": "Optimization not started"}
-solved_model = None
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            # Send status updates to the client
-            await websocket.send_text(f"Status: {optimization_status['status']}")
-            await asyncio.sleep(10)
-    except WebSocketDisconnect:
-        print("Client disconnected")
-    except Exception as e:
-        print(f"Error: {e}")
-
-class OptimizationRequest(BaseModel):
-    max_time: int = 1000
-    solver_name: str = "gurobi"
-
-@app.post("/start-optimization/")
-async def start_optimization(background_tasks: BackgroundTasks, request: OptimizationRequest):
-    global optimization_status
-
-    # Start optimization in background
-    background_tasks.add_task(run_optimization, request.max_time, request.solver_name)
-    optimization_status["status"] = "Optimizing"
-
-    return {"status": "Optimization started"}
-
-def run_optimization(max_time: int, solver_name: str):
-    global optimization_status, solved_model
-
-    data = optimization_data
-    alb_model = AssemblyLineModel()
-    model = alb_model.prepare(data)
-    solved_model = solver.execute(model, solver_name, max_time)
-    optimization_status["status"] = "Optimization completed"
-
-@app.get("/get-result/")
-async def get_result():
-    pass
-
-@app.post("/generate-html/")
-async def generate_html():
-    print_results(solved_model)
-    return {"status": "HTML generated"}
 
 class TasksRequest(BaseModel):
     tasks: List
@@ -155,7 +107,3 @@ async def upload_process_specific_costs(request: ProcessSpecificCostsRequest):
 async def upload_task_relevance(request: TaskRelevanceRequest):
     save_data("task_relevance", request.task_relevance)
     return {"status": "Task relevance uploaded successfully"}
-
-def start_server():
-    print("Starting API server...")
-    uvicorn.run("api.main:app", host="127.0.0.1", port=8001)

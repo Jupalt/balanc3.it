@@ -22,7 +22,6 @@ class AssemblyLineModel:
         process_specific_costs = data["process_specific_costs"]
 
         products = ["Test"]
-
         self.model = self.build_model(cycle_time, tasks, station_types, products, task_time_dict, precedence_relations,
                     incompatible_tasks, same_station_pairs, station_type_compatibility, station_costs, 
                     process_specific_costs, task_relevance)
@@ -41,95 +40,60 @@ class AssemblyLineModel:
     def build_model(self, cycle_time, tasks, station_types, products, task_time_dict, precedence_relations,
                     incompatible_tasks, same_station_pairs, station_type_compatibility, station_costs, 
                     process_specific_costs, task_relevance):
-        """
-        Parameters: 
-        ----------
-        cycle_time_dict : dict[str, int]
-            A dictionary where:
-            - The key is a String, representing one product of the assembly line
-            - The value is the required cycle time for this product
-        tasks : list[int]
-            A list of tasks with their IDs.
-        station_types : list[str]
-            A list of Strings, each representing a different station type.
-        products: list[str]
-            A list of Strings, each representing one product of the assembly line
-        task_time_dict: dict[tuple[int, str], int]
-            A dictionary where:
-            - The key is a tuple (task_ID, station_type)
-            - The value is the processing time (in integer units) required for the task on the given station type
-        precedence_relations: list[tuple[int, int]]:
-            A list of tuples (g, h) where task g must precede task h
-        incompatible_tasks: list[tuple[int, int]]
-            A list of tuples (d, f) where tasks d and f cannot be assigned to the same station
-        same_station_pairs: list[tuple[int, int]]
-            A list of tuples (m, n) where tasks m and n must be assigned to the same station
-        station_type_compatibility: dict[tuple[int, str], int]
-            A dictionary where:
-            - The key is a tuple (task_ID, station_type) indicating the task and station type combination
-            - The value is 1 if the task is compatible with the station type, and 0 otherwise
-        station_costs: dict[str, int]
-            A dictionary where:
-            - The key is a station type (string)
-            - The value is the fixed cost (integer) of opening a station of that type
-        process_specific_costs: dict[tuple[int, str], int]
-            A dictionary where:
-            - The key is a tuple (task_ID, station_type) indicating the task and station type combination
-            - The value is the additional cost (integer) for processing the task on the given station type
-        space_requirements: dict[int, int]
-            A dictionary where:
-            - The key is an int (task_ID)
-            - The value is the space requirement (int) of the task
-        task_relevance: dict[tuple[int, str], int]
-            A dictionary where:
-            - The key is a tuple (task_ID, product_ID) indicating the task and product combination
-            - The value is the relevance (int) of the task for the given product
-        """
-        model = ConcreteModel() 
+        
+        model = ConcreteModel()
 
-        # Define upper bound for number of stations
+        objective = "minimize_stations"
         max_stations = 72
 
-        # Sets
         model.TASKS = Set(initialize=tasks)
         model.STATIONS = Set(initialize=list(range(1, max_stations + 1))) # Initialize STATIONS with an upper bound
         model.TYPES = Set(initialize=station_types)
+        model.PARALLELS = Set(initialize=list(range(1, 4))) # Maximum number of parallel stations
         model.PRODUCTS = Set(initialize=products)
         model.PrecedencePairs = Set(initialize=precedence_relations, within=model.TASKS * model.TASKS)
         model.IncompatiblePairs = Set(initialize=incompatible_tasks, within=model.TASKS * model.TASKS)
         model.SameStationPairs = Set(initialize=same_station_pairs, within=model.TASKS * model.TASKS)
 
         # Parameters
-        model.c = Param(initialize=cycle_time) # Cycle time
+        model.T = Param(initialize=cycle_time) # Cycle time
         model.t = Param(model.TASKS, model.TYPES, initialize=task_time_dict) # Processing time of a task 
         model.F = Param(model.TASKS, model.TYPES, initialize=station_type_compatibility, within=Binary)
         model.C = Param(model.TYPES, initialize=station_costs) # Cost for opening a station
         model.q = Param(model.TASKS, model.TYPES, initialize=process_specific_costs) # Cost for processing a task on a station type
-        model.r = Param(model.TASKS, initialize=task_relevance, within=Binary) # Defines which tasks are relevant for a product
+        model.M = Param(initialize=max_stations)
+        model.labor_costs = Param(initialize=100000) # Labor costs
 
         # Decision Variables
-        model.x = Var(model.TASKS, model.STATIONS, within=Binary)  # Task assignment
-        model.z = Var(model.STATIONS, within=Binary)  # Station open/close
-        model.y = Var(model.STATIONS, model.TYPES, within=Binary)  # Station type assignment
-        model.p = Var(model.STATIONS, within=NonNegativeIntegers) # Number of parallel stations
-        model.task_order = Var(model.TASKS, model.STATIONS, within=NonNegativeIntegers) # For precedence relations within stations
-        model.l = Var(model.STATIONS, model.TYPES, within=NonNegativeIntegers)
-
-        # Objective Function
-        model.objective = Objective(rule=minimize_costs, sense=minimize)
+        model.x = Var(model.TASKS, model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)  # Task assignment
+        model.y = Var(model.STATIONS, model.PARALLELS, within=Binary)  # Helper variable Parallel
+        model.z = Var(model.STATIONS, model.TYPES, within=Binary)  # Station type assignment
 
         # Constraints
         model.task_assignment = Constraint(model.TASKS, rule=task_assignment_rule)
-        model.open_station = Constraint(model.TASKS, model.STATIONS, rule=open_station_rule)
-        model.cycle_time = Constraint(model.STATIONS, rule=cycle_time_constraint)
-        model.precedence = Constraint(model.PrecedencePairs, rule=precedence_rule)
-        model.station_type = Constraint(model.STATIONS, rule=station_type_rule)
-        model.station_compatibility = Constraint(model.TASKS, model.STATIONS, rule=station_compatibility_rule)
-        model.incompatible_tasks = Constraint(model.IncompatiblePairs, model.STATIONS, rule=incompatible_tasks_rule)
-        model.same_station_tasks = Constraint(model.SameStationPairs, model.STATIONS, rule=same_station_tasks_rule)
-        model.precedence_within_station = Constraint(model.PrecedencePairs, rule=precedence_within_station_rule)
-        model.task_order_assignment = Constraint(model.TASKS, model.STATIONS, rule=task_order_assignment_rule)
-        model.parallel_station_limit = Constraint(rule=parallel_station_limit_rule)
-        model.linearity_constraint = Constraint(model.STATIONS, model.TYPES, rule=linearity_constraint)
+        model.station_type = Constraint(model.STATIONS, model.TYPES, rule=station_type_rule)
+        model.station_type_helper = Constraint(model.STATIONS, rule=station_type_helper_rule)
+        model.station_compatibility = Constraint(model.TASKS, model.STATIONS, model.TYPES, model.PARALLELS, rule=compatibility_rule)
+        model.cycle_time = Constraint(model.STATIONS, rule=time_rule)
+        model.consistent_parallelity = Constraint(model.STATIONS, model.PARALLELS, rule=consistent_parallelity_rule)
+        model.parallel_helper = Constraint(model.STATIONS, rule=parallel_helper_rule)
+        model.precedence_relations = Constraint(model.PrecedencePairs, rule=precedence_relations_rule)
+        model.same_station_pairs_constraint = Constraint(model.SameStationPairs, model.STATIONS, rule=same_station_pairs_rule)
+
+        # Objective
+        if objective == "minimize_stations":
+            model.v = Var(model.STATIONS, within=Binary)
+            model.open_station = Constraint(model.STATIONS, rule=open_station)
+            model.objective_function = Objective(rule=minimize_stations, sense=minimize)
+
+        if objective == "minimize_fix_costs":
+            model.w = Var(model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)
+            model.helper_open_station = Constraint(model.STATIONS, model.TYPES, model.PARALLELS, rule=helper_open_station)
+            model.objective_function = Objective(rule=minimize_fix_costs, sense=minimize)
+
+        if objective == "minimize_costs":
+            model.w = Var(model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)
+            model.helper_open_station = Constraint(model.STATIONS, model.TYPES, model.PARALLELS, rule=helper_open_station)
+            model.objective_function = Objective(rule=minimize_costs, sense=minimize)
 
         return model

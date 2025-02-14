@@ -1,19 +1,28 @@
-# Minimizes the total number of stations
 def minimize_stations(model):
-    return sum(model.z[j] for j in model.STATIONS)
+    return sum(model.v[j] for j in model.STATIONS)
 
-# Minimizes the total costs
-def minimize_costs(model):
-    general_costs = sum(model.C[k] * model.l[j, k] for j in model.STATIONS for k in model.TYPES)
+def minimize_fix_costs(model):
+    station_costs = sum(model.C[k] * model.w[j, k, p] * p for k in model.TYPES for p in model.PARALLELS for j in model.STATIONS)
 
-    # Prozessspezifische Kosten
-    process_costs = sum(model.q[i, k] * model.x[i, j] * model.l[j, k]
-                        for j in model.STATIONS 
-                        for i in model.TASKS 
-                        for k in model.TYPES)
+    task_specific_costs = sum(model.q[i, k] * model.x[i, j, k, p] * p
+                              for i in model.TASKS
+                              for j in model.STATIONS
+                              for k in model.TYPES
+                              for p in model.PARALLELS)
     
-    return general_costs + process_costs
+    return station_costs + task_specific_costs
 
-# Maximizes the degree of automation while minimizing the number of stations
-def maximize_automation(model):
-    pass
+def minimize_costs(model):
+    fixed_automatic_costs = sum(sum(model.C["automatic"] * model.w[j, "automatic", p] * p for p in model.PARALLELS)
+                                    + sum(model.q[i, "automatic"] * model.x[i, j, "automatic", p] * p
+                                    for i in model.TASKS
+                                    for p in model.PARALLELS)
+                                for j in model.STATIONS)
+
+    total_automatic_costs = fixed_automatic_costs * 1.05
+
+    fixed_manual_costs = sum(sum(model.C["manual"] * model.w[j, "manual", p] * p for p in model.PARALLELS) for j in model.STATIONS)
+    task_specific_manual_costs = sum(model.q[i, "manual"] * model.x[i, j, "manual", p] * p for i in model.TASKS for p in model.PARALLELS for j in model.STATIONS)
+    total_labor_costs = sum(sum(model.w[j, "manual", p] * model.labor_costs * p for p in model.PARALLELS) for j in model.STATIONS)
+
+    return total_automatic_costs + fixed_manual_costs + task_specific_manual_costs + total_labor_costs
