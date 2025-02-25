@@ -34,6 +34,12 @@ def execute(model, solver_name, time_limit):
             solver.options['MIPGap'] = 0.00
         elif solver_name == "scip":
             solver.options['limits/time'] = time_limit
+            # solver.options['cuts'] = 'strong'
+            solver.options['presolving'] = 1
+            solver.options['threads'] = 4
+            solver.options['decomposition'] = 'block'
+        elif solver_name == "appsi_highs":
+            solver.options['time_limit'] = time_limit
 
         # Solve the model
         results = solver.solve(model, tee=True)

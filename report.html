@@ -1,7 +1,4 @@
-import json
 
-def build(table_data, results):
-    html_output = """
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -123,22 +120,190 @@ def build(table_data, results):
     </style>
 </head>
 <body>
-"""
-    for objective, result in results.items():
-        # Erstelle einen eigenen Namen für jedes "objective"
-        station_results_json_name = f"{objective}_station_results"
-        
-        # Umwandlung der station_results in JSON
-        station_results_json = json.dumps(result.station_results, indent=4)
-        
-        # HTML mit eingebettetem JSON
-        html_output += f"""
+
         <script>
-            // {station_results_json_name} enthält die Stationsergebnisse für {objective}
-            const {station_results_json_name} = {station_results_json};
+            // minimize_costs_station_results enthält die Stationsergebnisse für minimize_costs
+            const minimize_costs_station_results = {
+    "6": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            1,
+            2,
+            3
+        ],
+        "parallel_stations": 1
+    },
+    "11": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            5,
+            9,
+            10
+        ],
+        "parallel_stations": 1
+    },
+    "12": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            11
+        ],
+        "parallel_stations": 1
+    },
+    "14": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            12
+        ],
+        "parallel_stations": 1
+    },
+    "20": {
+        "station_type": "automatic",
+        "assigned_tasks": [
+            13
+        ],
+        "parallel_stations": 1
+    },
+    "39": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            14,
+            15,
+            19
+        ],
+        "parallel_stations": 1
+    },
+    "45": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            21,
+            22,
+            23,
+            24
+        ],
+        "parallel_stations": 1
+    },
+    "49": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            25
+        ],
+        "parallel_stations": 1
+    },
+    "51": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            26,
+            27,
+            28,
+            29
+        ],
+        "parallel_stations": 1
+    },
+    "53": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            33,
+            34,
+            35
+        ],
+        "parallel_stations": 3
+    },
+    "59": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            36,
+            37
+        ],
+        "parallel_stations": 3
+    },
+    "60": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            38,
+            39,
+            40,
+            41,
+            42,
+            43
+        ],
+        "parallel_stations": 1
+    },
+    "61": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            44
+        ],
+        "parallel_stations": 1
+    },
+    "62": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            45,
+            47,
+            48,
+            49,
+            50
+        ],
+        "parallel_stations": 1
+    },
+    "65": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            51,
+            52
+        ],
+        "parallel_stations": 1
+    },
+    "66": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            53,
+            54,
+            55,
+            56
+        ],
+        "parallel_stations": 1
+    },
+    "67": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            57,
+            58,
+            59
+        ],
+        "parallel_stations": 1
+    },
+    "68": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            60,
+            61
+        ],
+        "parallel_stations": 1
+    },
+    "70": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            62,
+            63
+        ],
+        "parallel_stations": 1
+    },
+    "71": {
+        "station_type": "manual",
+        "assigned_tasks": [
+            65,
+            66,
+            68,
+            69,
+            71,
+            72
+        ],
+        "parallel_stations": 2
+    }
+};
         </script>
-        """
-    html_output += """
+        
     <h1>Assembly Line Balancing Report</h1>
     <div class="image-container">
         <img src="minimize_costs_result_graph.png" alt="Graph 1">
@@ -159,19 +324,16 @@ def build(table_data, results):
             </tr>
         </thead>
         <tbody>
-    """
-    for objective, data in table_data.items():
-        html_output += f"""
+    
         <tr>
-            <td><b>{objective.replace('_', ' ').title()}</b></td>
-            <td>{data['number_of_stations']}</td>
-            <td>{data['total_number_of_stations']}</td>
-            <td>{data['cost_of_ownership']:,.0f}¥</td>
-            <td>{data['fix_costs']:,.0f}¥</td>
-            <td>{data['labor_costs']:,.0f}¥</td>
+            <td><b>Minimize Costs</b></td>
+            <td>20</td>
+            <td>25</td>
+            <td>20,958,248¥</td>
+            <td>15,665,400¥</td>
+            <td>5,280,000¥</td>
         </tr>
-        """
-    html_output += """
+        
         </tbody>
     </table>
 
@@ -231,6 +393,4 @@ def build(table_data, results):
     </script>
 </body>
 </html>
-    """
-    with open("report.html", "w") as file:
-        file.write(html_output)
+    

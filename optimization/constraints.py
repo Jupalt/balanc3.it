@@ -34,8 +34,8 @@ def precedence_relations_rule(model, g, h):
 def same_station_pairs_rule(model, m, n, j):
     return sum(model.x[m, j, k, p] for k in model.TYPES for p in model.PARALLELS) == sum(model.x[n, j, k, p] for k in model.TYPES for p in model.PARALLELS)
 
-def open_station(model, j):
-    return sum(model.x[i, j, k, p] for i in model.TASKS for k in model.TYPES for p in model.PARALLELS) <= model.v[j] * model.M
+def open_station(model, j, p):
+    return sum(model.x[i, j, k, p] for i in model.TASKS for k in model.TYPES) <= model.v[j, p] * model.M
 
 def helper_open_station(model, j, k, p):
     return sum(model.x[i, j, k, p] for i in model.TASKS) <= model.w[j, k, p] * model.M

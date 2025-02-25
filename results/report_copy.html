@@ -1,7 +1,4 @@
-import json
 
-def build(table_data, results):
-    html_output = """
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -123,28 +120,13 @@ def build(table_data, results):
     </style>
 </head>
 <body>
-"""
-    for objective, result in results.items():
-        # Erstelle einen eigenen Namen für jedes "objective"
-        station_results_json_name = f"{objective}_station_results"
-        
-        # Umwandlung der station_results in JSON
-        station_results_json = json.dumps(result.station_results, indent=4)
-        
-        # HTML mit eingebettetem JSON
-        html_output += f"""
-        <script>
-            // {station_results_json_name} enthält die Stationsergebnisse für {objective}
-            const {station_results_json_name} = {station_results_json};
-        </script>
-        """
-    html_output += """
+
     <h1>Assembly Line Balancing Report</h1>
     <div class="image-container">
-        <img src="minimize_costs_result_graph.png" alt="Graph 1">
-        <img src="minimize_fix_costs_result_graph.png" alt="Graph 2">
-        <img src="minimize_stations_result_graph.png" alt="Graph 3">
-        <img src="maximize_automation_result_graph.png" alt="Graph 4">
+        <img src="minimize_costs_result_graph_copy.png" alt="Graph 1">
+        <img src="minimize_fix_costs_result_graph_copy.png" alt="Graph 2">
+        <img src="minimize_stations_result_graph_copy.png" alt="Graph 3">
+        <img src="maximize_automation_result_graph_copy.png" alt="Graph 4">
     </div>
 
     <table>
@@ -159,36 +141,54 @@ def build(table_data, results):
             </tr>
         </thead>
         <tbody>
-    """
-    for objective, data in table_data.items():
-        html_output += f"""
+    
         <tr>
-            <td><b>{objective.replace('_', ' ').title()}</b></td>
-            <td>{data['number_of_stations']}</td>
-            <td>{data['total_number_of_stations']}</td>
-            <td>{data['cost_of_ownership']:,.0f}¥</td>
-            <td>{data['fix_costs']:,.0f}¥</td>
-            <td>{data['labor_costs']:,.0f}¥</td>
+            <td><b>Minimize Costs</b></td>
+            <td>10</td>
+            <td>17</td>
+            <td>22,193,325¥</td>
+            <td>18,551,000¥</td>
+            <td>3,520,000¥</td>
         </tr>
-        """
-    html_output += """
+        
+        <tr>
+            <td><b>Minimize Fix Costs</b></td>
+            <td>10</td>
+            <td>17</td>
+            <td>22,193,325¥</td>
+            <td>18,551,000¥</td>
+            <td>3,520,000¥</td>
+        </tr>
+        
+        <tr>
+            <td><b>Minimize Stations</b></td>
+            <td>13</td>
+            <td>17</td>
+            <td>106,799,325¥</td>
+            <td>104,179,600¥</td>
+            <td>1,100,000¥</td>
+        </tr>
+        
+        <tr>
+            <td><b>Maximize Automation</b></td>
+            <td>12</td>
+            <td>17</td>
+            <td>137,725,625¥</td>
+            <td>135,481,900¥</td>
+            <td>220,000¥</td>
+        </tr>
+        
         </tbody>
     </table>
 
     <!-- Buttons for selecting objectives -->
     <div class="button-container">
-        <button class="objective-button selected" id="minimize_costs" onclick="selectObjective('minimize_costs')">Minimize Costs</button>
-        <button class="objective-button" id="minimize_fix_costs" onclick="selectObjective('minimize_fix_costs')">Minimize Fix Costs</button>
-        <button class="objective-button" id="minimize_stations" onclick="selectObjective('minimize_stations')">Minimize Stations</button>
-        <button class="objective-button" id="maximize_automation" onclick="selectObjective('maximize_automation')">Maximize Automation</button>
+        <button class="objective-button selected" id="minimized-costs" onclick="selectObjective('minimized-costs')">Minimize Costs</button>
+        <button class="objective-button" id="minimized-fixed-costs" onclick="selectObjective('minimized-fixed-costs')">Minimize Fixed Costs</button>
+        <button class="objective-button" id="minimized-stations" onclick="selectObjective('minimized-stations')">Minimize Stations</button>
+        <button class="objective-button" id="maximize-automation" onclick="selectObjective('maximize-automation')">Maximize Automation</button>
     </div>
-
-    <div id="station_output"></div>
-
     <script>
-        window.onload = function() {
-            selectObjective('minimize_costs');
-        }
         function selectObjective(objectiveId) {
             // Alle Buttons zurücksetzen
             let buttons = document.querySelectorAll('.objective-button');
@@ -199,38 +199,8 @@ def build(table_data, results):
             // Den angeklickten Button hervorheben
             let selectedButton = document.getElementById(objectiveId);
             selectedButton.classList.add('selected');
-
-            // Stationsergebnisse für das ausgewählte Ziel laden
-            let stationResults;
-            if (objectiveId === 'minimize_costs') {
-                stationResults = minimize_costs_station_results;
-            } else if (objectiveId === 'minimize_fix_costs') {
-                stationResults = minimize_fix_costs_station_results;
-            } else if (objectiveId === 'minimize_stations') {
-                stationResults = minimize_stations_station_results;
-            } else if (objectiveId === 'maximize_automation') {
-                stationResults = maximize_automation_station_results;
-            }
-
-            // Dynamisches HTML für Stationen und Aufgaben erzeugen
-            let htmlOutput = '';
-            for (let stationId in stationResults) {
-                const stationInfo = stationResults[stationId];
-                const stationType = stationInfo.station_type;
-                htmlOutput += `<div class="station"><h2>Station ${stationId}: ${stationType}</h2>`;
-
-                // Aufgaben durchgehen und deren IDs anzeigen
-                for (let taskId of stationInfo.assigned_tasks) {
-                    htmlOutput += `<div class="task">Task ID: ${taskId}</div>`;
-                }
-                htmlOutput += '</div>';
-            }
-            // Das generierte HTML in das Container-Div einfügen
-            document.getElementById('station_output').innerHTML = htmlOutput;
         }
     </script>
 </body>
 </html>
-    """
-    with open("report.html", "w") as file:
-        file.write(html_output)
+    

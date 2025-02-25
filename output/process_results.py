@@ -1,27 +1,26 @@
-def print_results(model):
-    station_results = {}
+import output.generate_html as gh
 
-    # Iterate over all stations
-    for j in model.STATIONS:
-        for i in model.TASKS:
-            for k in model.TYPES:
-                for p in model.PARALLELS:
-                    if model.x[i, j, k, p].value == 1:
-                        if j not in station_results:
-                            station_results[j] = {
-                                "station_type": k,  # Setze den station_type
-                                "assigned_tasks": [i],  # Initialisiere die Liste mit der aktuellen Aufgabe
-                                "parallel_stations": p,  # Setze parallel_stations
-                            }
-                        else:
-                            # Falls station_results[j] schon existiert, füge die Aufgabe hinzu
-                            station_results[j]["assigned_tasks"].append(i)
-    
-    # Print results
-    count = 1
-    print("Result: ")
-    for station_index, info in station_results.items():
-        print(
-            f"Station {count} with type {info['station_type']} and parallel station {info['parallel_stations']}: {info['assigned_tasks']}"
-        ) 
-        count += 1
+def execute(results: dict):
+    for objective, result in results.items():
+        result.generate_station_results()
+        result.print_results()
+        result.build_station_time_graph()
+
+    generate_html(results)
+
+def get_table_data(results):
+    table_data = {}
+
+    for objective, result in results.items():
+        table_data[objective] = {
+            'number_of_stations': result.calculate_number_of_stations(),
+            'total_number_of_stations': result.calculate_total_number_of_stations(),
+            'cost_of_ownership': result.calculate_total_costs(),
+            'fix_costs': result.calculate_fix_costs(),
+            'labor_costs': result.calculate_labor_costs()
+        }
+
+    return table_data
+
+def generate_html(results):
+    gh.build(get_table_data(results), results)

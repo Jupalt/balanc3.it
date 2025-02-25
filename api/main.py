@@ -5,15 +5,23 @@ from pydantic import BaseModel
 from typing import Dict, List, Tuple
 from optimization.model import AssemblyLineModel
 from optimization import solver
-from output.process_results import print_results
+import output.process_results as pr
+from output.result import Result
+import multiprocessing
+import threading
 
 app = FastAPI()
 
 # Global Dict to save the input data
 optimization_data: Dict[str, any] = {}
 
+objectives = ["minimize_costs", "minimize_fix_costs", "minimize_stations", "maximize_automation"]
+# objectives = ['minimize_costs']
+results = None
 optimization_status = {"status": "Optimization not started"}
-solved_model = None
+
+def run_websocket():
+    uvicorn.run(app, host="127.0.0.1", port=8001)
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -33,32 +41,60 @@ class OptimizationRequest(BaseModel):
     solver_name: str = "gurobi"
 
 @app.post("/start-optimization/")
-async def start_optimization(background_tasks: BackgroundTasks, request: OptimizationRequest):
+async def start_optimization(request: OptimizationRequest):
     global optimization_status
 
+    print("Starting optimization...")
     # Start optimization in background
-    background_tasks.add_task(run_optimization, request.max_time, request.solver_name)
+    run_optimization(request.max_time, request.solver_name)
     optimization_status["status"] = "Optimizing"
 
-    return {"status": "Optimization started"}
+    return {"status": "Optimization finished"}
 
 def run_optimization(max_time: int, solver_name: str):
-    global optimization_status, solved_model
+    global optimization_status, results
 
     data = optimization_data
-    alb_model = AssemblyLineModel()
-    model = alb_model.prepare(data)
-    solved_model = solver.execute(model, solver_name, max_time)
+
+    processes = []
+    with multiprocessing.Manager() as manager:
+        shared_results = manager.dict()
+
+        for objective in objectives:
+            p = multiprocessing.Process(target=worker, args=(shared_results, objective, data, solver_name, max_time))
+            processes.append(p)
+            p.start()
+
+        for p in processes:
+            p.join()
+
+        results = dict(shared_results)
+        
     optimization_status["status"] = "Optimization completed"
+
+def worker(results, objective, data, solver_name, max_time):
+    results[objective] = optimization_process(objective, data, solver_name, max_time)
+
+def optimization_process(objective, data, solver_name, max_time):
+    print(f"Optimizing for objective: '{objective}'")
+    alb_model = AssemblyLineModel(objective)
+    model, task_time_dict = alb_model.prepare(data)
+    solved_model = solver.execute(model, solver_name, max_time)
+    print(f"Optimization for objective '{objective}' completed.")
+    return Result(objective, solved_model, task_time_dict)
 
 @app.get("/get-result/")
 async def get_result():
     pass
 
+@app.post("/process-results/")
+async def process_results():
+    pr.execute(results)
+    return {"status": "HTML generated"}
+
 @app.post("/generate-html/")
 async def generate_html():
-    print_results(solved_model)
-    return {"status": "HTML generated"}
+    pass
 
 class TasksRequest(BaseModel):
     tasks: List
@@ -158,4 +194,5 @@ async def upload_task_relevance(request: TaskRelevanceRequest):
 
 def start_server():
     print("Starting API server...")
-    uvicorn.run("api.main:app", host="127.0.0.1", port=8001)
+    threading.Thread(target=run_websocket, daemon=True).start()
+    uvicorn.run("api.main:app", host="127.0.0.1", port=8000)

@@ -1,5 +1,5 @@
 def minimize_stations(model):
-    return sum(model.v[j] for j in model.STATIONS)
+    return sum(model.v[j, p] * model.parallel_costs[p] for j in model.STATIONS for p in model.PARALLELS)
 
 def minimize_fix_costs(model):
     station_costs = sum(model.C[k] * model.w[j, k, p] * p for k in model.TYPES for p in model.PARALLELS for j in model.STATIONS)
@@ -26,3 +26,8 @@ def minimize_costs(model):
     total_labor_costs = sum(sum(model.w[j, "manual", p] * model.labor_costs * p for p in model.PARALLELS) for j in model.STATIONS)
 
     return total_automatic_costs + fixed_manual_costs + task_specific_manual_costs + total_labor_costs
+
+def maximize_automation(model):
+    alpha = 1/10
+    beta = 9/10
+    return sum(alpha * model.w[j, "manual", p] * p for j in model.STATIONS for p in model.PARALLELS) + sum(beta * model.v[j, p] * model.parallel_costs[p] for j in model.STATIONS for p in model.PARALLELS)

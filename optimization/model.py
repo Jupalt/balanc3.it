@@ -4,8 +4,9 @@ from optimization.constraints import *
 from optimization.objectives import *
 
 class AssemblyLineModel:
-    def __init__(self):
+    def __init__(self, objective_function):
         logging.getLogger('pyomo').setLevel(logging.WARNING)
+        self.objective_function = objective_function
         self.model = None
 
     def prepare(self, data):
@@ -26,7 +27,7 @@ class AssemblyLineModel:
                     incompatible_tasks, same_station_pairs, station_type_compatibility, station_costs, 
                     process_specific_costs, task_relevance)
 
-        return self.model
+        return self.model, task_time_dict
 
     def default_precedence_relations(self, tasks, task_relevance):
         """
@@ -43,7 +44,7 @@ class AssemblyLineModel:
         
         model = ConcreteModel()
 
-        objective = "minimize_stations"
+        objective = "minimize_costs"
         max_stations = 72
 
         model.TASKS = Set(initialize=tasks)
@@ -62,7 +63,8 @@ class AssemblyLineModel:
         model.C = Param(model.TYPES, initialize=station_costs) # Cost for opening a station
         model.q = Param(model.TASKS, model.TYPES, initialize=process_specific_costs) # Cost for processing a task on a station type
         model.M = Param(initialize=max_stations)
-        model.labor_costs = Param(initialize=100000) # Labor costs
+        model.labor_costs = Param(initialize=220000) # Labor costs
+        model.parallel_costs = Param(model.PARALLELS, initialize={1: 1, 2: 2.1, 3: 3.3}) # Costs for parallel stations
 
         # Decision Variables
         model.x = Var(model.TASKS, model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)  # Task assignment
@@ -81,19 +83,29 @@ class AssemblyLineModel:
         model.same_station_pairs_constraint = Constraint(model.SameStationPairs, model.STATIONS, rule=same_station_pairs_rule)
 
         # Objective
-        if objective == "minimize_stations":
-            model.v = Var(model.STATIONS, within=Binary)
-            model.open_station = Constraint(model.STATIONS, rule=open_station)
+        if self.objective_function == "minimize_stations":
+            model.v = Var(model.STATIONS, model.PARALLELS, within=Binary)
+            model.open_station = Constraint(model.STATIONS, model.PARALLELS, rule=open_station)
             model.objective_function = Objective(rule=minimize_stations, sense=minimize)
 
-        if objective == "minimize_fix_costs":
+        elif self.objective_function == "minimize_fix_costs":
             model.w = Var(model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)
             model.helper_open_station = Constraint(model.STATIONS, model.TYPES, model.PARALLELS, rule=helper_open_station)
             model.objective_function = Objective(rule=minimize_fix_costs, sense=minimize)
 
-        if objective == "minimize_costs":
+        elif self.objective_function == "minimize_costs":
             model.w = Var(model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)
             model.helper_open_station = Constraint(model.STATIONS, model.TYPES, model.PARALLELS, rule=helper_open_station)
             model.objective_function = Objective(rule=minimize_costs, sense=minimize)
+
+        elif self.objective_function == "maximize_automation":
+            model.v = Var(model.STATIONS, model.PARALLELS, within=Binary)
+            model.open_station = Constraint(model.STATIONS, model.PARALLELS, rule=open_station)
+            model.w = Var(model.STATIONS, model.TYPES, model.PARALLELS, within=Binary)
+            model.helper_open_station = Constraint(model.STATIONS, model.TYPES, model.PARALLELS, rule=helper_open_station)
+            model.objective_function = Objective(rule=maximize_automation, sense=minimize)
+        
+        else:
+            raise ValueError("Invalid objective function")
 
         return model

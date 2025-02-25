@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALB Output</title>
+    <style>
+        #station_output {
+            display: grid;
+            grid-gap: 0;
+            grid-template-columns: repeat(var(--columns), 1fr); /* Dynamische Anzahl an Spalten */
+            padding: 100px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .station-icon {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);  /* Zentriert das Icon horizontal */
+            width: 20px;
+            height: 20px;
+            background-color: #000;  /* Beispiel: schwarzes Quadrat als Platzhalter */
+        }
+
+        .station-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center; /* Vertikale Zentrierung der Texte */
+        }
+
+        .station {
+            padding: 10px;
+            border: 5px solid #ccc;
+            border-radius: 5px;
+            height: 150px;
+            text-align: center;
+        }
+        .Manual-icon {
+        background-color: red; /* Beispiel: ein rotes Quadrat für manuelle Stationen */
+        }
+
+        .Robot-icon {
+            background-color: green; /* Beispiel: grünes Quadrat für automatische Stationen */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="station_output"></div>
+
+    <script>
+        // Funktion zur Berechnung der Positionen
+        function getGridPosition(index, columns) {
+            let row, col;
+
+            if (index < columns) {
+                // Regel 1: Wenn StationIndex < columns
+                row = 1;
+                col = index;  // StationIndex als Spalte
+            } else if (index === columns) {
+                // Regel 2: Wenn StationIndex == columns
+                row = 2;
+                col = columns;  // Letzte Spalte in der zweiten Zeile
+            } else {
+                // Regel 3: Wenn StationIndex > columns
+                row = 3;
+                col = 2 * columns - index;  // Berechnete Spalte in der dritten Zeile
+            }
+
+            return { row, col };
+        }
+
+        // Beispiel für das Rendering der Stationen
+        window.onload = function() {
+            const stationResults = [
+                { stationId: 1, station_type: 'Manual', assigned_tasks: ['Task 1', 'Task 2'] },
+                { stationId: 2, station_type: 'Manual', assigned_tasks: ['Task 3'] },
+                { stationId: 3, station_type: 'Robot', assigned_tasks: ['Task 4'] },
+                { stationId: 4, station_type: 'Robot', assigned_tasks: ['Task 5'] },
+                { stationId: 5, station_type: 'Robot', assigned_tasks: ['Task 6'] },
+                { stationId: 6, station_type: 'Robot', assigned_tasks: ['Task 7'] },
+                { stationId: 7, station_type: 'Robot', assigned_tasks: ['Task 8'] },
+                { stationId: 8, station_type: 'Robot', assigned_tasks: ['Task 9'] },
+                { stationId: 9, station_type: 'Manual', assigned_tasks: ['Task 10'] }, 
+
+            ];
+            const columns = Math.ceil(stationResults.length / 2);
+
+            let htmlOutput = '';
+            for (let index = 0; index < stationResults.length; index++) {
+                const stationInfo = stationResults[index];
+                const { row, col } = getGridPosition(index+1, columns);
+
+                htmlOutput += `
+                    <div class="station" style="grid-row: ${row}; grid-column: ${col}">
+                        <div class="station-content">
+                            <h2>Station ${stationInfo.stationId}: ${stationInfo.station_type}</h2>
+                            ${stationInfo.assigned_tasks.map(task => `<div class="task">${task}</div>`).join('')}
+                        </div>
+                        <div class="station-icon ${stationInfo.station_type}"-icon></div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('station_output').innerHTML = htmlOutput;
+        };
+    </script>
+
+</body>
+</html>

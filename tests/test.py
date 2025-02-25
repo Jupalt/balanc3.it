@@ -1,6 +1,4 @@
-import json
-
-def build(table_data, results):
+def build(results, table_data):
     html_output = """
 <!DOCTYPE html>
 <html lang="de">
@@ -32,7 +30,7 @@ def build(table_data, results):
             display: grid;
             grid-template-columns: repeat(2, 1fr); /* 2 Spalten */
             gap: 20px; /* Abstand zwischen den Bildern */
-            width: 90%; /* 80% der Fensterbreite */
+            width: 90%;
             margin-top: 20px; /* Abstand zum Titel */
         }
 
@@ -97,48 +95,10 @@ def build(table_data, results):
             color: white;
         }
 
-        .stations-container {
-            display: flex;
-            flex-wrap: wrap; /* Erlaubt Zeilenumbruch, wenn nicht genug Platz vorhanden ist */
-            gap: 20px; /* Abstand zwischen den Blöcken */
-            justify-content: center; /* Zentriert die Inhalte */
-        }
-        .station {
-            border: 1px solid #ccc; /* Rahmen um jeden Block */
-            padding: 15px;
-            width: 300px; /* Maximale Breite der Station */
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Leichter Schatten */
-            background-color: #f9f9f9; /* Hintergrundfarbe */
-            border-radius: 5px; /* Abgerundete Ecken */
-        }
-        .station h2 {
-            color: #2c3e50;
-            text-align: center;
-        }
-        .task {
-            margin-left: 10px;
-            font-size: 0.9em;
-        }
-
     </style>
 </head>
 <body>
-"""
-    for objective, result in results.items():
-        # Erstelle einen eigenen Namen für jedes "objective"
-        station_results_json_name = f"{objective}_station_results"
-        
-        # Umwandlung der station_results in JSON
-        station_results_json = json.dumps(result.station_results, indent=4)
-        
-        # HTML mit eingebettetem JSON
-        html_output += f"""
-        <script>
-            // {station_results_json_name} enthält die Stationsergebnisse für {objective}
-            const {station_results_json_name} = {station_results_json};
-        </script>
-        """
-    html_output += """
+
     <h1>Assembly Line Balancing Report</h1>
     <div class="image-container">
         <img src="minimize_costs_result_graph.png" alt="Graph 1">
@@ -151,7 +111,6 @@ def build(table_data, results):
         <thead>
             <tr>
                 <th>Objective</th>
-                <th>Number of Processes</th>
                 <th>Number of Stations</th>
                 <th>Total Cost of Ownership</th>
                 <th>Fixed Costs</th>
@@ -165,10 +124,9 @@ def build(table_data, results):
         <tr>
             <td><b>{objective.replace('_', ' ').title()}</b></td>
             <td>{data['number_of_stations']}</td>
-            <td>{data['total_number_of_stations']}</td>
-            <td>{data['cost_of_ownership']:,.0f}¥</td>
-            <td>{data['fix_costs']:,.0f}¥</td>
-            <td>{data['labor_costs']:,.0f}¥</td>
+            <td>{data['cost_of_ownership']}¥</td>
+            <td>{data['fix_costs']}¥</td>
+            <td>{data['labor_costs']}¥</td>
         </tr>
         """
     html_output += """
@@ -177,18 +135,12 @@ def build(table_data, results):
 
     <!-- Buttons for selecting objectives -->
     <div class="button-container">
-        <button class="objective-button selected" id="minimize_costs" onclick="selectObjective('minimize_costs')">Minimize Costs</button>
-        <button class="objective-button" id="minimize_fix_costs" onclick="selectObjective('minimize_fix_costs')">Minimize Fix Costs</button>
-        <button class="objective-button" id="minimize_stations" onclick="selectObjective('minimize_stations')">Minimize Stations</button>
-        <button class="objective-button" id="maximize_automation" onclick="selectObjective('maximize_automation')">Maximize Automation</button>
+        <button class="objective-button selected" id="minimized-costs" onclick="selectObjective('minimized-costs')">Minimize Costs</button>
+        <button class="objective-button" id="minimized-fixed-costs" onclick="selectObjective('minimized-fixed-costs')">Minimize Fixed Costs</button>
+        <button class="objective-button" id="minimized-stations" onclick="selectObjective('minimized-stations')">Minimize Stations</button>
+        <button class="objective-button" id="maximize-automation" onclick="selectObjective('maximize-automation')">Maximize Automation</button>
     </div>
-
-    <div id="station_output"></div>
-
-    <script>
-        window.onload = function() {
-            selectObjective('minimize_costs');
-        }
+        <script>
         function selectObjective(objectiveId) {
             // Alle Buttons zurücksetzen
             let buttons = document.querySelectorAll('.objective-button');
@@ -199,34 +151,6 @@ def build(table_data, results):
             // Den angeklickten Button hervorheben
             let selectedButton = document.getElementById(objectiveId);
             selectedButton.classList.add('selected');
-
-            // Stationsergebnisse für das ausgewählte Ziel laden
-            let stationResults;
-            if (objectiveId === 'minimize_costs') {
-                stationResults = minimize_costs_station_results;
-            } else if (objectiveId === 'minimize_fix_costs') {
-                stationResults = minimize_fix_costs_station_results;
-            } else if (objectiveId === 'minimize_stations') {
-                stationResults = minimize_stations_station_results;
-            } else if (objectiveId === 'maximize_automation') {
-                stationResults = maximize_automation_station_results;
-            }
-
-            // Dynamisches HTML für Stationen und Aufgaben erzeugen
-            let htmlOutput = '';
-            for (let stationId in stationResults) {
-                const stationInfo = stationResults[stationId];
-                const stationType = stationInfo.station_type;
-                htmlOutput += `<div class="station"><h2>Station ${stationId}: ${stationType}</h2>`;
-
-                // Aufgaben durchgehen und deren IDs anzeigen
-                for (let taskId of stationInfo.assigned_tasks) {
-                    htmlOutput += `<div class="task">Task ID: ${taskId}</div>`;
-                }
-                htmlOutput += '</div>';
-            }
-            // Das generierte HTML in das Container-Div einfügen
-            document.getElementById('station_output').innerHTML = htmlOutput;
         }
     </script>
 </body>
@@ -234,3 +158,33 @@ def build(table_data, results):
     """
     with open("report.html", "w") as file:
         file.write(html_output)
+
+
+table_data = {
+    "minimized_costs": {
+        "number_of_stations": 5,
+        "cost_of_ownership": 25000,
+        "fix_costs": 12000,
+        "labor_costs": 13000
+    },
+    "minimized_fixed_costs": {
+        "number_of_stations": 4,
+        "cost_of_ownership": 22000,
+        "fix_costs": 8000,
+        "labor_costs": 14000
+    },
+    "minimized_stations": {
+        "number_of_stations": 6,
+        "cost_of_ownership": 26000,
+        "fix_costs": 15000,
+        "labor_costs": 11000
+    },
+    "maximize_automation": {
+        "number_of_stations": 3,
+        "cost_of_ownership": 23000,
+        "fix_costs": 10000,
+        "labor_costs": 13000
+    }
+}
+
+build(table_data)
